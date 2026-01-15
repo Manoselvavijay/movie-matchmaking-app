@@ -8,15 +8,33 @@ import { Movie } from "@/data/movies";
 import { Film, Clapperboard } from "lucide-react";
 import Link from "next/link";
 import MovieBackground from "./MovieBackground";
+import ProfileModal from "./ProfileModal";
+import MatchWatchLogo from "./MatchWatchLogo";
+import { createClient } from "@/utils/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 interface SwipeInterfaceProps {
     initialMovies: Movie[];
+    initialUser: User | null;
 }
 
-export default function SwipeInterface({ initialMovies }: SwipeInterfaceProps) {
+export default function SwipeInterface({ initialMovies, initialUser }: SwipeInterfaceProps) {
     const [cardStack, setCardStack] = useState<Movie[]>(initialMovies);
     const [watchlist, setWatchlist] = useState<Movie[]>([]);
     const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+    const [user, setUser] = useState<User | null>(initialUser);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+    // Fetch user on mount (optional - keep for client-side updates if needed, 
+    // but initial state is now handled by prop)
+    useEffect(() => {
+        const supabase = createClient();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
 
     // Load watchlist from local storage on mount
     useEffect(() => {
@@ -55,30 +73,42 @@ export default function SwipeInterface({ initialMovies }: SwipeInterfaceProps) {
             <MovieBackground posters={posterUrls} />
 
             {/* Header */}
-            <header className="absolute top-0 w-full p-4 flex justify-between items-center z-50">
-                <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 flex items-center justify-center">
-                        <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-purple-600 rounded-lg opacity-20 transform rotate-3"></div>
-                        <Clapperboard className="text-red-500 relative z-10" size={32} />
-                    </div>
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-purple-600 bg-clip-text text-transparent">
-                        Watch Later
-                    </h1>
+            <header className="absolute top-0 w-full p-6 flex justify-between items-center z-50 bg-gradient-to-b from-black/80 to-transparent">
+                <div className="flex items-center gap-1">
+                    <MatchWatchLogo />
                 </div>
-                <Link href="/watchlist" className="relative group">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center relative active:scale-95 transition-all duration-200 bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20">
-                        <Film className="relative text-gray-200 z-10" size={20} />
-                    </div>
-                    {watchlist.length > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full pointer-events-none z-20 shadow-md">
-                            {watchlist.length}
-                        </span>
+                <div className="flex items-center gap-4">
+                    <Link href="/watchlist" className="relative group">
+                        <div className="w-10 h-10 flex items-center justify-center hover:text-white text-gray-300 transition">
+                            <Film size={24} />
+                        </div>
+                        {watchlist.length > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full pointer-events-none">
+                                {watchlist.length}
+                            </span>
+                        )}
+                    </Link>
+
+                    {/* Profile Icon */}
+                    {user ? (
+                        <button
+                            onClick={() => setIsProfileOpen(true)}
+                            className="w-10 h-10 rounded overflow-hidden border-2 border-transparent hover:border-white transition"
+                        >
+                            <div className="w-full h-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                {user.email?.charAt(0).toUpperCase()}
+                            </div>
+                        </button>
+                    ) : (
+                        <Link href="/login" className="px-4 py-1 text-white bg-red-600 rounded text-sm font-medium hover:bg-red-700 transition">
+                            Sign In
+                        </Link>
                     )}
-                </Link>
+                </div>
             </header>
 
             {/* Card Stack */}
-            <div className="relative w-full max-w-sm aspect-[2/3] flex items-center justify-center z-10">
+            <div className="relative w-full max-w-[320px] aspect-[2/3] flex items-center justify-center z-10 mt-28 md:mt-20">
                 {cardStack.length > 0 ? (
                     cardStack.slice(0, 3).map((movie, index) => (
                         <MovieCard
@@ -113,6 +143,14 @@ export default function SwipeInterface({ initialMovies }: SwipeInterfaceProps) {
                 movie={selectedMovie}
                 onClose={() => setSelectedMovie(null)}
             />
+
+            {/* Profile Modal */}
+            {isProfileOpen && user && (
+                <ProfileModal
+                    user={user}
+                    onClose={() => setIsProfileOpen(false)}
+                />
+            )}
         </main>
     );
 }

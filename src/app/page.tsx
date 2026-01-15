@@ -2,9 +2,15 @@ import { fetchTrendingMovies, mapTMDBMovieToAppMovie } from "@/lib/tmdb";
 import SwipeInterface from "@/components/SwipeInterface";
 import { movies as mockMovies } from "@/data/movies";
 
+import { createClient } from "@/utils/supabase/server";
+
 export default async function Home() {
   // Fetch real data from TMDB
   const tmdbMovies = await fetchTrendingMovies();
+
+  // Fetch user session for initial state (avoids flicker)
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // Transform to our app's format
   const initialMovies = tmdbMovies.length > 0
@@ -12,6 +18,6 @@ export default async function Home() {
     : mockMovies; // Fallback to mock data if API fails or empty
 
   return (
-    <SwipeInterface initialMovies={initialMovies} />
+    <SwipeInterface initialMovies={initialMovies} initialUser={user} />
   );
 }

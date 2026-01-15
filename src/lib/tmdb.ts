@@ -30,23 +30,35 @@ export function getImageUrl(path: string | null, size: 'w200' | 'w300' | 'w400' 
 
 export async function fetchTrendingMovies(page = 1): Promise<Movie[]> {
     if (!TMDB_API_KEY) {
-        throw new Error('TMDB_API_KEY is not defined in environment variables');
+        console.warn('TMDB_API_KEY is missing');
+        return [];
     }
 
     try {
+        // Add timeout signal
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
         const res = await fetch(
             `${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}&page=${page}`,
-            { next: { revalidate: 3600 } } // Cache for 1 hour
+            {
+                next: { revalidate: 3600 },
+                signal: controller.signal
+            }
         );
+        clearTimeout(id);
 
         if (!res.ok) {
-            throw new Error(`Failed to fetch trending movies: ${res.status}`);
+            console.error(`TMDB API Error: ${res.status} ${res.statusText}`);
+            return [];
         }
 
         const data: TMDBResponse<Movie> = await res.json();
-        return data.results;
+        return data.results || [];
     } catch (error) {
-        console.error('Error fetching trending movies:', error);
+        // Safe logging needed for Vercel/Node logs
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Error fetching trending movies:', errorMessage);
         return [];
     }
 }

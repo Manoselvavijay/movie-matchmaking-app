@@ -7,43 +7,46 @@ import { X, Heart, Info } from "lucide-react";
 
 export default function ActionButtons({ onSwipe, onInfoClick, disabled }: ActionButtonsProps) {
     return (
-        <div className="flex items-center justify-center space-x-8 mt-10 z-10 pb-6">
+        <div className="flex items-center justify-center space-x-6 mt-8 z-10 pb-6">
             {/* Dislike Button */}
             <button
                 onClick={() => onSwipe("left")}
                 disabled={disabled}
-                className="group relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                className="group relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-50"
                 aria-label="Dislike"
             >
-                <div className="absolute inset-0 bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg border border-red-500/30 group-hover:bg-red-500/20 group-hover:border-red-500/50 transition-all duration-300"></div>
-                <div className="relative text-red-500">
-                    <X size={32} strokeWidth={2.5} />
+                <div className="absolute inset-0 bg-[#2a2a2a] border border-white/20 rounded-full group-hover:bg-white/10 transition-colors"></div>
+                <div className="relative text-white">
+                    <X size={20} strokeWidth={2} />
                 </div>
             </button>
 
-            {/* Info Button */}
+            {/* Watch Trailer Button */}
             <button
                 onClick={onInfoClick}
                 disabled={disabled}
-                className="group relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-                aria-label="Info"
+                className="relative h-12 pl-6 pr-8 rounded bg-white text-black flex items-center justify-center gap-3 transition-transform duration-200 active:scale-95 disabled:opacity-50 hover:bg-white/90"
+                aria-label="Watch Trailer"
             >
-                <div className="absolute inset-0 bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg border border-blue-400/30 group-hover:bg-blue-400/20 group-hover:border-blue-400/50 transition-all duration-300"></div>
-                <div className="relative text-blue-400">
-                    <Info size={24} strokeWidth={2.5} />
+                <div className="text-black fill-black">
+                    {/* Using a filled play icon-like triangle or just the Info icon but filled contextually if Play is preferred, keeping Info for now but styled as Play */}
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 5V19L19 12L8 5Z" />
+                    </svg>
                 </div>
+                <span className="text-base font-bold tracking-wide">Play Trailer</span>
             </button>
 
             {/* Like Button */}
             <button
                 onClick={() => onSwipe("right")}
                 disabled={disabled}
-                className="group relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                className="group relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-50"
                 aria-label="Like"
             >
-                <div className="absolute inset-0 bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg border border-green-500/30 group-hover:bg-green-500/20 group-hover:border-green-500/50 transition-all duration-300"></div>
-                <div className="relative text-green-500">
-                    <Heart size={32} fill="currentColor" className="text-green-500 shadow-sm" />
+                <div className="absolute inset-0 bg-[#2a2a2a] border border-white/20 rounded-full group-hover:bg-white/10 transition-colors"></div>
+                <div className="relative text-white">
+                    <Heart size={20} strokeWidth={2} />
                 </div>
             </button>
         </div>

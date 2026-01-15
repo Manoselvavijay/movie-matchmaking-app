@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { Movie } from "@/data/movies";
 import { cn } from "@/lib/utils";
+
+import { Star } from "lucide-react";
 
 interface MovieCardProps {
     movie: Movie;
@@ -19,10 +22,22 @@ export default function MovieCard({ movie, onSwipe, index, onInfoClick }: MovieC
     // Only allow dragging if it is the top card
     const isFront = index === 0;
 
+    // Track dragging state to prevent accidental clicks handled as taps
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragStart = () => {
+        setIsDragging(true);
+    };
+
     const handleDragEnd = (
         _: MouseEvent | TouchEvent | PointerEvent,
         info: PanInfo
     ) => {
+        // Small delay to allow onTap to fire if it wasn't a real drag, 
+        // but for actual swipes we want to ignore the tap.
+        // Actually, if we've dragged significantly, it's a swipe.
+        setTimeout(() => setIsDragging(false), 50);
+
         if (Math.abs(info.offset.x) > 100) {
             const direction = info.offset.x > 0 ? "right" : "left";
             onSwipe(direction);
@@ -30,7 +45,9 @@ export default function MovieCard({ movie, onSwipe, index, onInfoClick }: MovieC
     };
 
     const handleTap = () => {
-        onInfoClick?.();
+        if (!isDragging) {
+            onInfoClick?.();
+        }
     };
 
     return (
@@ -45,8 +62,10 @@ export default function MovieCard({ movie, onSwipe, index, onInfoClick }: MovieC
             }}
             drag={isFront ? "x" : false}
             dragConstraints={{ left: 0, right: 0 }}
+            onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onTap={isFront ? handleTap : undefined}
+            whileHover={{ scale: isFront ? 1.05 : 1 - index * 0.05 }} // Scale up on hover if front
             animate={{
                 scale: 1 - index * 0.05,
                 top: index * 10,
@@ -67,13 +86,17 @@ export default function MovieCard({ movie, onSwipe, index, onInfoClick }: MovieC
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
+                {/* Top-right rating display */}
+                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1 z-10">
+                    <Star className="text-yellow-400 fill-yellow-400 w-4 h-4" />
+                    <span className="text-white font-bold text-sm">{movie.rating.toFixed(1)}</span>
+                </div>
+
                 {/* Content */}
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                     <h2 className="text-3xl font-bold mb-1 line-clamp-2">{movie.title}</h2>
                     <div className="flex items-center space-x-2 text-sm text-gray-300 mb-3">
-                        <span className="bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded font-bold">
-                            ★ {movie.rating}
-                        </span>
+                        {/* Removed old rating display */}
                         <span>{movie.year}</span>
                         <span>•</span>
                         <span className="truncate">{movie.genre.join(", ")}</span>
