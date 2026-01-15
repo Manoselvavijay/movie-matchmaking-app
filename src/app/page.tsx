@@ -9,8 +9,16 @@ export default async function Home() {
   const tmdbMovies = await fetchTrendingMovies();
 
   // Fetch user session for initial state (avoids flicker)
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Fetch user session for initial state
+  let user = null;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (error) {
+    console.error('Error fetching user session:', error);
+    // User remains null, app continues to load
+  }
 
   // Transform to our app's format
   const initialMovies = tmdbMovies.length > 0
