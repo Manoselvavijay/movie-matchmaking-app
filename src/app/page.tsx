@@ -4,6 +4,8 @@ import { movies as mockMovies } from "@/data/movies";
 
 import { createClient } from "@/utils/supabase/server";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // Fetch real data from TMDB
   const tmdbMovies = await fetchTrendingMovies();
