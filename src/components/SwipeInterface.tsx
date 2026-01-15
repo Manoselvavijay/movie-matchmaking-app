@@ -29,6 +29,8 @@ export default function SwipeInterface({ initialMovies, initialUser }: SwipeInte
     // but initial state is now handled by prop)
     useEffect(() => {
         const supabase = createClient();
+        if (!supabase) return;
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
         });
