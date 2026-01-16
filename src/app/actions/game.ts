@@ -2,7 +2,6 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { fetchTrendingMovies } from "@/lib/tmdb";
-import { redirect } from "next/navigation";
 
 function generatePin(): string {
     return Math.floor(1000 + Math.random() * 9000).toString();
@@ -46,7 +45,7 @@ export async function startNewGame() {
 
     if (error) {
         console.error("Error creating room (detailed):", JSON.stringify(error, null, 2));
-        throw new Error(`Failed to create room: ${error.message} - ${error.details || ''} - ${error.hint || ''}`);
+        throw new Error(`Failed to create room: ${error.message}`);
     }
 
     return room;
@@ -80,12 +79,17 @@ export async function joinGame(pin: string) {
         throw new Error("Game already started or finished");
     }
 
+    // Check if room is full
+    if (room.player2_user_id && room.player2_user_id !== user.id) {
+        throw new Error("Game already started");
+    }
+
     // Update player 2
     const { data: updatedRoom, error: updateError } = await supabase
         .from('rooms')
         .update({
             player2_user_id: user.id,
-            status: 'ready' // Optional: change status to ready when p2 joins
+            status: 'playing' // Auto-start game when p2 joins
         })
         .eq('id', room.id)
         .select()
@@ -99,6 +103,44 @@ export async function joinGame(pin: string) {
     return updatedRoom;
 }
 
+export async function resumeGame(roomId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) throw new Error("Must be logged in");
+
+    const { data: room, error: fetchError } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+    if (fetchError || !room) throw new Error("Room not found");
+
+    let newStatus = room.status;
+
+    // State machine for resuming
+    // paused -> paused_HOST_ready OR paused_PLAYER2_ready
+    // paused_X_ready -> playing (if Y confirms)
+
+    if (room.status === 'paused') {
+        if (room.host_user_id === user.id) newStatus = 'paused_host_ready';
+        else if (room.player2_user_id === user.id) newStatus = 'paused_player2_ready';
+    } else if (room.status === 'paused_host_ready') {
+        // If player 2 confirms now, we are good to go
+        if (room.player2_user_id === user.id) newStatus = 'playing';
+    } else if (room.status === 'paused_player2_ready') {
+        // If host confirms now, we are good to go
+        if (room.host_user_id === user.id) newStatus = 'playing';
+    }
+
+    if (newStatus !== room.status) {
+        await supabase.from('rooms').update({ status: newStatus }).eq('id', roomId);
+    }
+
+    return newStatus;
+}
+
 export async function submitSwipe(roomId: string, movieId: string, liked: boolean) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -108,24 +150,71 @@ export async function submitSwipe(roomId: string, movieId: string, liked: boolea
     }
 
     try {
+        // 1. Insert into swipes
         const { error } = await supabase
             .from('swipes')
-            .insert({
+            .upsert({
                 room_id: roomId,
                 user_id: user.id,
                 movie_id: movieId.toString(),
                 liked
+            }, {
+                onConflict: 'room_id,user_id,movie_id'
             });
 
         if (error) {
-            // Ignore unique constraint violations (duplicate swipes)
-            if (error.code !== '23505') {
-                console.error("Error submitting swipe:", error);
-                throw error;
+            console.error("Error submitting swipe:", error);
+            throw error;
+        }
+
+        // 2. Query swipes where room_id = currentRoom, movie_id = swipedMovie, liked = true
+        if (liked) {
+            const { count, error: countError } = await supabase
+                .from('swipes')
+                .select('*', { count: 'exact', head: true }) // head: true for simpler counting
+                .eq('room_id', roomId)
+                .eq('movie_id', movieId.toString())
+                .eq('liked', true);
+
+            if (countError) {
+                console.error("Error counting swipes:", countError);
+            }
+
+            // 3. If count = 2 -> MATCH FOUND
+            if (count === 2) {
+                console.log("Match detected! Count is 2 on movie:", movieId);
+
+                // Insert into matches
+                const { error: matchError } = await supabase
+                    .from('matches')
+                    .insert({
+                        room_id: roomId,
+                        movie_id: movieId.toString()
+                    });
+
+                if (!matchError || matchError.code === '23505') {
+                    // Emit real-time event is handled by Supabase subscription to 'matches'
+
+                    // Pause the game for both users
+                    await supabase
+                        .from('rooms')
+                        .update({ status: 'paused' })
+                        .eq('id', roomId);
+                }
             }
         }
+
     } catch (e) {
         console.error("Submit swipe failed:", e);
-        // Don't block the UI for this, but log it
     }
+}
+
+export async function leaveGame(roomId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    // Mark room as ended/abandoned
+    await supabase.from('rooms').update({ status: 'abandoned' }).eq('id', roomId);
 }
