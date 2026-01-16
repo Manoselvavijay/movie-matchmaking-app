@@ -8,6 +8,13 @@ import Link from "next/link";
 export default function WatchlistPage() {
     const [watchlist, setWatchlist] = useState<Movie[]>([]);
 
+    // Check for return path
+    let backLink = "/solo";
+    if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        backLink = params.get("returnTo") || "/solo";
+    }
+
     useEffect(() => {
         const saved = localStorage.getItem("watchlist");
         if (saved) {
@@ -29,7 +36,7 @@ export default function WatchlistPage() {
     return (
         <div className="min-h-screen bg-black text-white p-4">
             <header className="flex items-center mb-8 sticky top-0 bg-black/90 backdrop-blur-sm z-10 py-4">
-                <Link href="/" className="mr-4 p-2 hover:bg-gray-800 rounded-full transition">
+                <Link href={backLink} className="mr-4 p-2 hover:bg-gray-800 rounded-full transition">
                     <ArrowLeft size={24} />
                 </Link>
                 <div className="flex items-center gap-3">
@@ -40,7 +47,7 @@ export default function WatchlistPage() {
             {watchlist.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-[60vh] text-gray-400">
                     <p className="text-lg">No movies saved yet.</p>
-                    <Link href="/" className="mt-4 text-red-500 hover:underline">
+                    <Link href={backLink} className="mt-4 text-red-500 hover:underline">
                         Go back and find some!
                     </Link>
                 </div>

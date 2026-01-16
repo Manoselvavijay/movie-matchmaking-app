@@ -37,7 +37,7 @@ export async function fetchTrendingMovies(page = 1): Promise<Movie[]> {
     try {
         // Add timeout signal
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        const id = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
         const res = await fetch(
             `${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}&page=${page}`,
@@ -49,7 +49,7 @@ export async function fetchTrendingMovies(page = 1): Promise<Movie[]> {
         clearTimeout(id);
 
         if (!res.ok) {
-            console.error(`TMDB API Error: ${res.status} ${res.statusText}`);
+            console.warn(`TMDB API unreachable (${res.status}), using mock data.`);
             return [];
         }
 
@@ -58,7 +58,7 @@ export async function fetchTrendingMovies(page = 1): Promise<Movie[]> {
     } catch (error) {
         // Safe logging needed for Vercel/Node logs
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('Error fetching trending movies:', errorMessage);
+        console.warn('TMDB API unreachable, falling back to mock data:', errorMessage);
         return [];
     }
 }
@@ -84,6 +84,41 @@ export async function searchMovies(query: string, page = 1): Promise<Movie[]> {
         console.error('Error searching movies:', error);
         return [];
     }
+}
+
+
+export async function getMovieById(id: string | number): Promise<Movie | null> {
+    if (!TMDB_API_KEY) return null;
+
+    try {
+        const res = await fetch(
+            `${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}`,
+            { next: { revalidate: 3600 } }
+        );
+
+        if (!res.ok) return null;
+
+        const data: Movie = await res.json();
+        return data;
+    } catch (e) {
+        console.error(`Error fetching movie ${id}:`, e);
+        return null;
+    }
+}
+
+export async function getMoviesByIds(ids: Array<string | number>): Promise<Movie[]> {
+    // TMDB doesn't have a bulk fetch, so we fetch sequentially to avoid rate limits/fetch failures
+    const limitedIds = ids.slice(0, 20);
+    const movies: Movie[] = [];
+
+    for (const id of limitedIds) {
+        const movie = await getMovieById(id);
+        if (movie) {
+            movies.push(movie);
+        }
+    }
+
+    return movies;
 }
 
 // GENRE MAP (Ideally fetch this from API, but hardcoding for simplicity/performance in this demo)

@@ -37,23 +37,34 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
+    // IMPORTANT: Avoid writing any logic between createServerClient and
+    // supabase.auth.getUser().
     const {
         data: { user },
     } = await supabase.auth.getUser()
 
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        request.nextUrl.pathname !== '/'
-    ) {
-        // Only redirect protected routes. 
-        // Allowing root '/' for now or redirecting? 
-        // User asked for "simple login" and "profile icon". 
-        // We'll let them browse but header will show login.
-        // So we usually don't force redirect unless on protected pages (like watchlist potentially later).
+    const url = request.nextUrl.clone()
+    const path = url.pathname
 
-        // For now, let's NOT block access to home page.
+    // Arrays of paths
+    const authPaths = ['/login', '/signup']
+    const publicPaths = ['/auth/callback'] // Add other purely public paths if necessary
+
+    if (!user) {
+        // User is NOT logged in
+        // Allow access to auth paths, public paths, and root
+        // Redirect everything else to /login
+        if (!authPaths.some(p => path.startsWith(p)) && !publicPaths.some(p => path.startsWith(p)) && path !== '/') {
+            url.pathname = '/login'
+            return NextResponse.redirect(url)
+        }
+    } else {
+        // User IS logged in
+        // Redirect away from auth pages to home
+        if (authPaths.some(p => path.startsWith(p))) {
+            url.pathname = '/'
+            return NextResponse.redirect(url)
+        }
     }
 
     return supabaseResponse

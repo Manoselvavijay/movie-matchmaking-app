@@ -1,6 +1,8 @@
 import { signup } from '@/app/login/actions'
 import Link from 'next/link'
 
+import MatchWatchLogo from '@/components/MatchWatchLogo'
+
 export default function SignupPage(props: {
     searchParams: Promise<{ error?: string, message?: string }>
 }) {
@@ -12,12 +14,7 @@ export default function SignupPage(props: {
 
             {/* Top Nav (Logo only) */}
             <div className="absolute top-0 left-0 w-full p-8 z-20">
-                <div className="flex items-center gap-1">
-                    <div className="w-8 h-8 md:w-10 md:h-10 border-2 border-red-600 flex items-center justify-center rounded-sm">
-                        <span className="text-red-600 font-bold text-xs md:text-sm">MW</span>
-                    </div>
-                    <span className="text-red-600 font-bold text-2xl md:text-3xl tracking-tighter uppercase">MatchWatch</span>
-                </div>
+                <MatchWatchLogo />
             </div>
 
             <div className="w-full max-w-[450px] bg-black/75 p-16 rounded-lg relative z-10 shadow-2xl">
